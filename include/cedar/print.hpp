@@ -22,6 +22,7 @@
 #include <fstream>
 #include <iostream>
 #include <list>
+#include <unistd.h>
 #include <map>
 #include <optional>
 #include <set>
@@ -51,6 +52,12 @@ constexpr const char* C_SEQ  = "\033[95m";  // 紫: 序列(vector/list/tuple/pai
 constexpr const char* C_MAP  = "\033[96m";  // 青: 关联容器(map/set)
 constexpr const char* C_NONE = "\033[90m";  // 灰: 空值(nullptr/empty optional)
 constexpr const char* C_DEF  = "\033[37m";  // 白: 其他
+
+// ---------- 判断 stdout 是否为终端（非终端不输出颜色） ----------
+inline bool color_enabled() {
+    static const bool enabled = isatty(STDOUT_FILENO);
+    return enabled;
+}
 
 // ---------- 判断 T 是否是 Primary<...> 的实例 ----------
 template <typename T, template <typename...> class Primary>
@@ -269,7 +276,7 @@ std::string print_impl(const std::string& sep, const std::string& end, const Arg
     std::ostringstream out;
     out << prefix;
     std::size_t i = 0;
-    ((out << (i++ ? sep : "") << format_arg(args, true)), ...);
+    ((out << (i++ ? sep : "") << format_arg(args, color_enabled())), ...);
     std::string colored = out.str() + end;
     std::cout << colored << std::flush;
 
