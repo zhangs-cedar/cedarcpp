@@ -2,7 +2,7 @@
 // 覆盖全部支持的数据类型 + 日志文件验证
 // 编译: g++ -std=c++17 -I <install>/include test_sprint.cpp
 
-#include <cedar/s_print.hpp>
+#include <cedar/print.hpp>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
