@@ -28,51 +28,51 @@ void check(bool cond, const string& msg) {
 
 int main() {
     // ===== 1. 基本类型 =====
-    cedar::sprint("Hello World");
-    cedar::sprint("Hello", 42, 3.14, true);
-    cedar::sprint("int:", 123, "float:", 45.67, "bool:", false);
-    cedar::sprint('A', 'B', 'C');
+    cedar::print("Hello World");
+    cedar::print("Hello", 42, 3.14, true);
+    cedar::print("int:", 123, "float:", 45.67, "bool:", false);
+    cedar::print('A', 'B', 'C');
 
     // ===== 2. 容器 =====
     vector<int> v = {1, 2, 3};
-    cedar::sprint("vector:", v);
+    cedar::print("vector:", v);
 
     list<string> lst = {"a", "b"};
-    cedar::sprint("list:", lst);
+    cedar::print("list:", lst);
 
     deque<double> dq = {1.5, 2.5};
-    cedar::sprint("deque:", dq);
+    cedar::print("deque:", dq);
 
     map<string, int> mp = {{"x", 1}, {"y", 2}};
-    cedar::sprint("map:", mp);
+    cedar::print("map:", mp);
 
     unordered_map<int, string> ump = {{1, "one"}};
-    cedar::sprint("unordered_map:", ump);
+    cedar::print("unordered_map:", ump);
 
     set<int> s = {10, 20, 30};
-    cedar::sprint("set:", s);
+    cedar::print("set:", s);
 
     unordered_set<string> us = {"a", "b"};
-    cedar::sprint("unordered_set:", us);
+    cedar::print("unordered_set:", us);
 
     // ===== 3. Pair & Tuple =====
     auto p = make_pair("key", 42);
-    cedar::sprint("pair:", p);
+    cedar::print("pair:", p);
 
     auto t = make_tuple(1, "two", 3.0);
-    cedar::sprint("tuple:", t);
+    cedar::print("tuple:", t);
 
     // ===== 4. Optional & Nullptr =====
     optional<int> opt_yes = 100;
     optional<int> opt_no;
-    cedar::sprint("opt_with_value:", opt_yes, "opt_empty:", opt_no);
-    cedar::sprint("nullptr:", nullptr);
+    cedar::print("opt_with_value:", opt_yes, "opt_empty:", opt_no);
+    cedar::print("nullptr:", nullptr);
 
     // ===== 5. 自定义 sep/end =====
-    cedar::sprint_with(" | ", "\n", "A", "B", "C");
+    cedar::print_with(" | ", "\n", "A", "B", "C");
 
     // ===== 6. 验证日志文件 =====
-    string log_path = "/tmp/sprint.log";
+    string log_path = "/tmp/print.log";
     ifstream log_file(log_path);
     check(log_file.good(), "log file should exist at " + log_path);
 

@@ -1,5 +1,5 @@
-#ifndef CEDAR_SPRINT_HPP
-#define CEDAR_SPRINT_HPP
+#ifndef CEDAR_PRINT_HPP
+#define CEDAR_PRINT_HPP
 
 #include <chrono>
 #include <cstdlib>
@@ -257,11 +257,11 @@ inline std::string current_timestamp() {
 
 // ---------- Log path ----------
 inline std::string resolve_log_path() {
-    const char* env = std::getenv("SPRINT_LOG_PATH");
+    const char* env = std::getenv("PRINT_LOG_PATH");
     if (env && env[0] != '\0') {
         return std::string(env);
     }
-    return "/tmp/sprint.log";
+    return "/tmp/print.log";
 }
 
 // ---------- Log writer ----------
@@ -283,7 +283,7 @@ inline void append_log(const std::string& path, const std::string& content) {
 // ---------- Core implementation ----------
 // Takes any number of arguments (sep and end are baked into the params)
 template <typename... Args>
-std::string sprint_impl(const std::string& sep, const std::string& end, const Args&... args) {
+std::string print_impl(const std::string& sep, const std::string& end, const Args&... args) {
     std::string timestamp = current_timestamp();
     std::string prefix = timestamp + "   ";
 
@@ -316,18 +316,18 @@ std::string sprint_impl(const std::string& sep, const std::string& end, const Ar
 // Public API
 // ============================================================
 
-/// Default: sprint(arg1, arg2, ...) with sep=" " end="\n"
+/// Default: print(arg1, arg2, ...) with sep=" " end="\n"
 template <typename... Args>
-std::string sprint(Args&&... args) {
-    return detail::sprint_impl(" ", "\n", std::forward<Args>(args)...);
+std::string print(Args&&... args) {
+    return detail::print_impl(" ", "\n", std::forward<Args>(args)...);
 }
 
-/// Custom sep/end: sprint_with(" | ", "\n", arg1, arg2, ...)
+/// Custom sep/end: print_with(" | ", "\n", arg1, arg2, ...)
 template <typename... Args>
-std::string sprint_with(const std::string& sep, const std::string& end, Args&&... args) {
-    return detail::sprint_impl(sep, end, std::forward<Args>(args)...);
+std::string print_with(const std::string& sep, const std::string& end, Args&&... args) {
+    return detail::print_impl(sep, end, std::forward<Args>(args)...);
 }
 
 }  // namespace cedar
 
-#endif  // CEDAR_SPRINT_HPP
+#endif  // CEDAR_PRINT_HPP
