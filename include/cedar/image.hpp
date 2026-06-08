@@ -1,37 +1,39 @@
-#ifndef CEDAR_ANY_HPP
-#define CEDAR_ANY_HPP
+#ifndef CEDAR_IMAGE_HPP
+#define CEDAR_IMAGE_HPP
 
+#include <cstdlib>
 #include <iostream>
+#include <string>
 #include <opencv2/opencv.hpp>
 #include <xtensor/xadapt.hpp>
 #include <xtensor/xarray.hpp>
 #include <xtensor/xmath.hpp>
 #include <xtensor/xview.hpp>
-using namespace cv;
-using namespace std;
+
+namespace cedar {
 
 // 加载图像并检查是否成功加载
-Mat loadAndCheckImage(const string &filename)
+cv::Mat loadAndCheckImage(const std::string &filename)
 {
-    Mat image = imread(filename);
+    cv::Mat image = cv::imread(filename);
     if (image.empty())
     {
-        cerr << "无法加载图像: " << filename << endl;
-        exit(EXIT_FAILURE);
+        std::cerr << "无法加载图像: " << filename << std::endl;
+        std::exit(EXIT_FAILURE);
     }
     return image;
 }
 
 // 交换图像通道
-Mat swapChannels(const Mat &image)
+cv::Mat swapChannels(const cv::Mat &image)
 {
-    Mat swapped_image;
-    cvtColor(image, swapped_image, COLOR_BGR2RGB);
+    cv::Mat swapped_image;
+    cv::cvtColor(image, swapped_image, cv::COLOR_BGR2RGB);
     return swapped_image;
 }
 
 // 灰度化
-Mat BGR2GRAY(const cv::Mat &image)
+cv::Mat BGR2GRAY(const cv::Mat &image)
 {
     cv::Mat gray;
     cv::cvtColor(image, gray, cv::COLOR_BGR2GRAY);
@@ -39,23 +41,23 @@ Mat BGR2GRAY(const cv::Mat &image)
 }
 
 // 二值化
-Mat thresholding(const Mat &image, int threshold_value)
+cv::Mat thresholding(const cv::Mat &image, int threshold_value)
 {
-    Mat binary_image;
-    threshold(image, binary_image, threshold_value, 255, THRESH_BINARY);
+    cv::Mat binary_image;
+    cv::threshold(image, binary_image, threshold_value, 255, cv::THRESH_BINARY);
     return binary_image;
 }
 
 // 二值化（Otsu 方法）
-Mat thresholdingOtsu(const Mat &image)
+cv::Mat thresholdingOtsu(const cv::Mat &image)
 {
-    Mat binary_image;
-    threshold(image, binary_image, 0, 255, THRESH_BINARY | THRESH_OTSU);
+    cv::Mat binary_image;
+    cv::threshold(image, binary_image, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU);
     return binary_image;
 }
 
 // 使用OpenCV函数实现平均池化
-Mat averagePooling(const cv::Mat &img, int pool_size)
+cv::Mat averagePooling(const cv::Mat &img, int pool_size)
 {
     int height = img.rows;         // 图像高度
     int width = img.cols;          // 图像宽度
@@ -84,16 +86,18 @@ Mat averagePooling(const cv::Mat &img, int pool_size)
 }
 
 // 显示图像
-void showImage(const string &window_name, const Mat &image)
+void showImage(const std::string &window_name, const cv::Mat &image)
 {
-    imshow(window_name, image);
-    waitKey(0);
+    cv::imshow(window_name, image);
+    cv::waitKey(0);
 }
 
 // 保存图像
-void saveImage(const string &filename, const Mat &image)
+void saveImage(const std::string &filename, const cv::Mat &image)
 {
-    imwrite(filename, image);
+    cv::imwrite(filename, image);
 }
+
+}  // namespace cedar
 
 #endif

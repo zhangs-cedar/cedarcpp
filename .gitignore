@@ -44,3 +44,9 @@ install_manifest.txt
 CMakeCache.txt
 cmake_install.cmake
 test/output/
+output/
+
+# Editor
+.vscode/
+.idea/
+tutorial/

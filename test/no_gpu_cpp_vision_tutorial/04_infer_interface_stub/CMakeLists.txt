@@ -1,3 +1,0 @@
-add_executable(04_infer_interface_stub src/main.cpp src/infer_engines.cpp)
-target_include_directories(04_infer_interface_stub PRIVATE include)
-target_link_libraries(04_infer_interface_stub PRIVATE ng_common)

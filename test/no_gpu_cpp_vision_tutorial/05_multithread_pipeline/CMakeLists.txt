@@ -1,4 +1,0 @@
-add_executable(05_multithread_pipeline src/main.cpp)
-target_link_libraries(05_multithread_pipeline PRIVATE ng_common)
-find_package(Threads REQUIRED)
-target_link_libraries(05_multithread_pipeline PRIVATE Threads::Threads)
