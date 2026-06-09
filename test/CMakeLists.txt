@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.5)
 project(cedar_test LANGUAGES CXX)
 
+# 显式指定 C++ 标准（clangd 需要从 compile_commands.json 读到 -std= 标志）
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 # 通过 find_package 找到已安装的 cedar 库
 # 使用时需设置 -DCMAKE_PREFIX_PATH=<install_prefix>
 find_package(cedar CONFIG REQUIRED)
