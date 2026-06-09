@@ -1,40 +1,24 @@
 #ifndef CEDAR_PRINT_HPP
 #define CEDAR_PRINT_HPP
 
-/**
- * cedar::print / cedar::print_with
- *
- * 对标 cedarpy 中 cedar/utils/s_print.py 的彩色打印函数。
- * 控制台输出 ANSI 彩色文本，同时将纯文本（无颜色码）写入日志文件。
- *
- * 用法:
- *   cedar::print("hello", 42, true);              // 默认 sep=" " end="\n"
- *   cedar::print_with(" | ", "\n", "a", "b");     // 自定义 sep 和 end
- *
- * 日志: 默认 /tmp/print.log，环境变量 PRINT_LOG_PATH 可覆盖
- */
+// ============================================================
+// cedar::print  —  打印任意值到控制台（带颜色）+ 日志文件
+//
+// 用法:
+//   #include <cedar/print.hpp>
+//   cedar::print("hello", 42, true);
+//
+// 像 Python 的 print()，但:
+//   - 字符串→绿色，数字→蓝色，布尔值→黄色，其他→白色
+//   - 每行开头有 [时间戳]
+//   - 同时写入日志文件（纯文本，无颜色码）
+//   - 返回拼接后的字符串（带颜色码）
+//
+// C++ 的 << 运算符负责把值转成字符串——int、float、string
+// 都是自带的。如果你传了一个不支持 << 的类型，编译器会报错。
+// ============================================================
 
-#include <chrono>
-#include <cstdlib>
-#include <ctime>
-#include <deque>
-#include <filesystem>
-#include <fstream>
-#include <iostream>
-#include <list>
-#include <unistd.h>
-#include <map>
-#include <optional>
-#include <set>
-#include <sstream>
-#include <string>
-#include <string_view>
-#include <tuple>
-#include <type_traits>
-#include <unordered_map>
-#include <unordered_set>
-#include <utility>
-#include <vector>
+#include <cedar/print_detail.hpp>
 
 namespace cedar {
 
@@ -43,200 +27,59 @@ namespace cedar {
 // ============================================================
 namespace detail {
 
-// ---------- ANSI 颜色码 ----------
-constexpr const char* RESET  = "\033[0m";
-constexpr const char* C_STR  = "\033[32m";  // 绿: 字符串
-constexpr const char* C_NUM  = "\033[94m";  // 蓝: 数字
-constexpr const char* C_BOOL = "\033[93m";  // 黄: 布尔
-constexpr const char* C_SEQ  = "\033[95m";  // 紫: 序列(vector/list/tuple/pair)
-constexpr const char* C_MAP  = "\033[96m";  // 青: 关联容器(map/set)
-constexpr const char* C_NONE = "\033[90m";  // 灰: 空值(nullptr/empty optional)
-constexpr const char* C_DEF  = "\033[37m";  // 白: 其他
-
-// ---------- 判断 stdout 是否为终端（非终端不输出颜色） ----------
+// ---------- color_enabled ----------
+// 判断 stdout 是否连接了终端（是→输出颜色，否→不输出）
 inline bool color_enabled() {
     static const bool enabled = isatty(STDOUT_FILENO);
     return enabled;
 }
 
-// ---------- 判断 T 是否是 Primary<...> 的实例 ----------
-template <typename T, template <typename...> class Primary>
-struct is_specialization : std::false_type {};
+// ---------- format_arg ----------
+// 把单个参数格式化成字符串。
+//
+// Python 版的话，其实就是:
+//   def format_arg(arg, colored):
+//       if isinstance(arg, bool):
+//           return f"{color}true/false{reset}"
+//       elif arg is None:
+//           return f"{color}None{reset}"
+//       else:
+//           return f"{color}{arg}{reset}"
+//
+// C++ 的 << 运算符会自动处理 int、float、string、char 等内置类型。
+// 如果你传的是 list/map 等没有 << 的类型，编译会报错。
+// 这是 C++ 的设计哲学: 只有明确支持的操作才能用。
 
-template <template <typename...> class Primary, typename... Args>
-struct is_specialization<Primary<Args...>, Primary> : std::true_type {};
-
-template <typename T, template <typename...> class Primary>
-inline constexpr bool is_specialization_v = is_specialization<T, Primary>::value;
-
-// ---------- 判断 T 是否是字符串类型 ----------
-template <typename T>
-struct is_string_type : std::false_type {};
-
-template <> struct is_string_type<std::string>     : std::true_type {};
-template <> struct is_string_type<std::string_view> : std::true_type {};
-template <> struct is_string_type<const char*>      : std::true_type {};
-template <> struct is_string_type<char*>            : std::true_type {};
-template <std::size_t N> struct is_string_type<const char[N]> : std::true_type {};
-template <std::size_t N> struct is_string_type<char[N]>       : std::true_type {};
-
-template <typename T>
-inline constexpr bool is_string_type_v = is_string_type<std::decay_t<T>>::value;
-
-// ---------- 获取类型对应的 ANSI 颜色 ----------
-template <typename T>
-constexpr const char* color_for() {
-    using U = std::decay_t<T>;
-    if constexpr (is_string_type_v<T>)             return C_STR;
-    else if constexpr (std::is_same_v<U, bool>)    return C_BOOL;
-    else if constexpr (std::is_arithmetic_v<U>)    return C_NUM;
-    else if constexpr (is_specialization_v<U, std::vector>  ||
-                       is_specialization_v<U, std::list>    ||
-                       is_specialization_v<U, std::deque>   ||
-                       is_specialization_v<U, std::tuple>   ||
-                       is_specialization_v<U, std::pair>)   return C_SEQ;
-    else if constexpr (is_specialization_v<U, std::map>        ||
-                       is_specialization_v<U, std::unordered_map> ||
-                       is_specialization_v<U, std::set>        ||
-                       is_specialization_v<U, std::unordered_set>) return C_MAP;
-    else if constexpr (std::is_same_v<U, std::nullptr_t> ||
-                       is_specialization_v<U, std::optional>)  return C_NONE;
-    else                                                     return C_DEF;
-}
-
-// ---------- 获取类型的显示名称 ----------
-template <typename T>
-std::string type_name() {
-    using U = std::decay_t<T>;
-    if constexpr (std::is_same_v<U, int>)                return "int";
-    else if constexpr (std::is_same_v<U, long>)          return "long";
-    else if constexpr (std::is_same_v<U, long long>)     return "long long";
-    else if constexpr (std::is_same_v<U, unsigned>)      return "unsigned";
-    else if constexpr (std::is_same_v<U, unsigned long>) return "unsigned long";
-    else if constexpr (std::is_same_v<U, float>)         return "float";
-    else if constexpr (std::is_same_v<U, double>)        return "double";
-    else if constexpr (std::is_same_v<U, bool>)          return "bool";
-    else if constexpr (std::is_same_v<U, char>)          return "char";
-    else if constexpr (std::is_same_v<U, std::string>)   return "str";
-    else if constexpr (is_specialization_v<U, std::vector>)    return "vector";
-    else if constexpr (is_specialization_v<U, std::list>)      return "list";
-    else if constexpr (is_specialization_v<U, std::deque>)     return "deque";
-    else if constexpr (is_specialization_v<U, std::map>)       return "map";
-    else if constexpr (is_specialization_v<U, std::unordered_map>) return "unordered_map";
-    else if constexpr (is_specialization_v<U, std::set>)       return "set";
-    else if constexpr (is_specialization_v<U, std::unordered_set>) return "unordered_set";
-    else if constexpr (is_specialization_v<U, std::pair>)      return "pair";
-    else if constexpr (is_specialization_v<U, std::tuple>)     return "tuple";
-    else if constexpr (is_specialization_v<U, std::optional>)  return "optional";
-    else if constexpr (std::is_same_v<U, std::nullptr_t>)      return "NoneType";
-    else                                                       return "unknown";
-}
-
-// ---------- 前向声明（供下面相互递归调用） ----------
-template <typename T>
-std::string format_arg(const T& arg, bool colored);
-
-// 格式化序列容器: vector, list, deque, set, unordered_set
-template <typename Container>
-std::string fmt_seq(const Container& c, bool colored) {
-    std::ostringstream oss;
-    oss << "{";
-    bool first = true;
-    for (const auto& e : c) {
-        if (!first) oss << ", ";
-        oss << format_arg(e, colored);
-        first = false;
-    }
-    oss << "}";
-    return oss.str();
-}
-
-// 格式化关联容器: map, unordered_map
-template <typename Map>
-std::string fmt_map(const Map& m, bool colored) {
-    std::ostringstream oss;
-    oss << "{";
-    bool first = true;
-    for (const auto& [k, v] : m) {
-        if (!first) oss << ", ";
-        oss << format_arg(k, colored) << ": " << format_arg(v, colored);
-        first = false;
-    }
-    oss << "}";
-    return oss.str();
-}
-
-// 格式化 std::pair
-template <typename T1, typename T2>
-std::string fmt_pair(const std::pair<T1, T2>& p, bool colored) {
-    std::ostringstream oss;
-    oss << "(" << format_arg(p.first, colored) << ", " << format_arg(p.second, colored) << ")";
-    return oss.str();
-}
-
-// 格式化 std::tuple（递归展开）
-template <typename Tuple, std::size_t... I>
-std::string fmt_tuple_impl(const Tuple& t, bool colored, std::index_sequence<I...>) {
-    std::ostringstream oss;
-    oss << "(";
-    ((oss << (I == 0 ? "" : ", ") << format_arg(std::get<I>(t), colored)), ...);
-    oss << ")";
-    return oss.str();
-}
-
-template <typename... Ts>
-std::string fmt_tuple(const std::tuple<Ts...>& t, bool colored) {
-    return fmt_tuple_impl(t, colored, std::index_sequence_for<Ts...>{});
-}
-
-// ---------- 核心: 按类型格式化单个参数 ----------
-// colored=true  → 输出带 ANSI 颜色，false → 纯文本（写日志用）
 template <typename T>
 std::string format_arg(const T& arg, bool colored) {
-    using U = std::decay_t<T>;
-    std::ostringstream oss;
+    using U = std::decay_t<T>;  // 去掉引用/const，拿到"干净"的类型
 
     const char* color = colored ? color_for<T>() : "";
     const char* reset = colored ? RESET : "";
 
-    if constexpr (is_string_type_v<T>) {
-        // 字符串直接输出，但指针类型要检查 nullptr
-        if constexpr (std::is_pointer_v<U>) {
-            if (arg == nullptr) { oss << color << "None" << reset; return oss.str(); }
-        }
-        oss << color << arg << reset;
-    } else if constexpr (std::is_same_v<U, bool>) {
-        oss << color << "(bool) " << (arg ? "true" : "false") << reset;
-    } else if constexpr (std::is_same_v<U, char>) {
-        oss << color << "(char) '" << arg << "'" << reset;
-    } else if constexpr (std::is_arithmetic_v<U>) {
-        oss << color << "(" << type_name<T>() << ") " << arg << reset;
+    std::ostringstream oss;  // 类似 io.StringIO()
+
+    if constexpr (std::is_same_v<U, bool>) {
+        // bool: 输出 true/false（而不是 C++ 默认的 1/0）
+        oss << color << (arg ? "true" : "false") << reset;
+
     } else if constexpr (std::is_same_v<U, std::nullptr_t>) {
+        // nullptr: 输出 None（和 Python 保持一致）
         oss << color << "None" << reset;
-    } else if constexpr (is_specialization_v<U, std::optional>) {
-        if (arg.has_value()) oss << format_arg(*arg, colored);
-        else                 oss << color << "(optional) None" << reset;
-    } else if constexpr (is_specialization_v<U, std::vector>  ||
-                          is_specialization_v<U, std::list>    ||
-                          is_specialization_v<U, std::deque>   ||
-                          is_specialization_v<U, std::set>     ||
-                          is_specialization_v<U, std::unordered_set>) {
-        oss << color << "(" << type_name<T>() << ") " << fmt_seq(arg, colored) << reset;
-    } else if constexpr (is_specialization_v<U, std::map> ||
-                          is_specialization_v<U, std::unordered_map>) {
-        oss << color << "(" << type_name<T>() << ") " << fmt_map(arg, colored) << reset;
-    } else if constexpr (is_specialization_v<U, std::pair>) {
-        oss << color << "(" << type_name<T>() << ") " << fmt_pair(arg, colored) << reset;
-    } else if constexpr (is_specialization_v<U, std::tuple>) {
-        oss << color << "(" << type_name<T>() << ") " << fmt_tuple(arg, colored) << reset;
+
     } else {
-        // 未知类型: 尝试 operator<< 兜底
-        oss << color << "(" << type_name<T>() << ") " << arg << reset;
+        // 其他所有类型: 交给 << 处理
+        // int, float, double, char, string 等都有内置的 <<
+        oss << color << arg << reset;
     }
+
     return oss.str();
 }
 
-// ---------- 当前时间戳 [YYYY-MM-DD HH:MM:SS] ----------
+
+// ---------- timestamp ----------
+// 返回当前时间: [YYYY-MM-DD HH:MM:SS]
+// 相当于 Python 的 datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
 inline std::string timestamp() {
     auto now = std::chrono::system_clock::now();
     std::time_t t = std::chrono::system_clock::to_time_t(now);
@@ -247,13 +90,21 @@ inline std::string timestamp() {
     return std::string(buf);
 }
 
-// ---------- 解析日志路径: 环境变量 > 默认值 ----------
+
+// ---------- log_path ----------
+// 日志路径: 环境变量 PRINT_LOG_PATH，没有则默认 /tmp/print.log
+// 相当于 Python 的 os.environ.get("PRINT_LOG_PATH", "/tmp/print.log")
 inline std::string log_path() {
     const char* env = std::getenv("PRINT_LOG_PATH");
     return (env && env[0]) ? std::string(env) : "/tmp/print.log";
 }
 
-// ---------- 追加写入日志文件（自动创建父目录） ----------
+
+// ---------- append_log ----------
+// 向日志文件追加一行（自动创建目录）
+// 相当于 Python 的:
+//   os.makedirs(os.path.dirname(path), exist_ok=True)
+//   with open(path, "a") as f: f.write(content)
 inline void append_log(const std::string& path, const std::string& content) {
     if (path.empty()) return;
     try {
@@ -262,29 +113,49 @@ inline void append_log(const std::string& path, const std::string& content) {
         std::ofstream f(path, std::ios::app);
         if (f) { f << content; f.flush(); }
     } catch (...) {
-        // 日志写入失败不影响主流程（与 Python 版一致）
+        // 日志写失败不中断程序
     }
 }
 
-// ---------- 核心实现: 拼接参数 → 控制台(彩色) + 日志(纯文本) ----------
-template <typename... Args>
-std::string print_impl(const std::string& sep, const std::string& end, const Args&... args) {
-    std::string ts = timestamp();
-    std::string prefix = ts + "   ";
 
-    // 构建彩色输出 → 打屏
+// ---------- print_impl ----------
+// 核心: 拼接参数 → 打屏（彩色）→ 写日志（纯文本）
+//
+// 相当于 Python 的:
+//   def _print_impl(*args):
+//       prefix = f"[{timestamp()}]   "
+//       # 打屏（带颜色）
+//       colored = prefix
+//       for i, a in enumerate(args):
+//           if i > 0: colored += " "
+//           colored += format_arg(a, colored=True)
+//       print(colored, flush=True)
+//       # 写日志（纯文本）
+//       plain = prefix
+//       for i, a in enumerate(args):
+//           if i > 0: plain += " "
+//           plain += format_arg(a, colored=False)
+//       append_to_log(plain)
+//       return colored
+
+template <typename... Args>
+std::string print_impl(const Args&... args) {
+    std::string prefix = timestamp() + "   ";
+
+    // ---- 控制台: 彩色输出 ----
     std::ostringstream out;
     out << prefix;
     std::size_t i = 0;
-    ((out << (i++ ? sep : "") << format_arg(args, color_enabled())), ...);
-    std::string colored = out.str() + end;
+    ((out << (i++ ? " " : "") << format_arg(args, color_enabled())), ...);
+    std::string colored = out.str() + "\n";
     std::cout << colored << std::flush;
 
-    // 构建纯文本输出 → 写日志
-    out.str(""); out.clear();
+    // ---- 日志: 纯文本（不带颜色码）----
+    out.str("");
+    out.clear();
     out << prefix;
     i = 0;
-    ((out << (i++ ? sep : "") << format_arg(args, false)), ...);
+    ((out << (i++ ? " " : "") << format_arg(args, false)), ...);
     append_log(log_path(), out.str() + "\n");
 
     return colored;
@@ -292,20 +163,23 @@ std::string print_impl(const std::string& sep, const std::string& end, const Arg
 
 }  // namespace detail
 
+
 // ============================================================
 // 公共 API
 // ============================================================
 
-/// 彩色打印, 默认 sep=" " end="\n"
+/// 打印任意值到控制台（带颜色），同时写入日志
+///
+/// 参数: 任意数量的值（必须有 << 运算符支持）
+/// 返回: 拼接后的彩色字符串
+///
+/// 示例:
+///   cedar::print("hello");           // → [时间戳]   hello
+///   cedar::print(42, 3.14, true);    // → [时间戳]   42 3.14 true
+///   auto s = cedar::print("ok");     // s 包含带颜色码的字符串
 template <typename... Args>
 std::string print(Args&&... args) {
-    return detail::print_impl(" ", "\n", std::forward<Args>(args)...);
-}
-
-/// 彩色打印, 自定义分隔符和结尾
-template <typename... Args>
-std::string print_with(const std::string& sep, const std::string& end, Args&&... args) {
-    return detail::print_impl(sep, end, std::forward<Args>(args)...);
+    return detail::print_impl(std::forward<Args>(args)...);
 }
 
 }  // namespace cedar

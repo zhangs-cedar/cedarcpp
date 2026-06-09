@@ -1,8 +1,9 @@
 // ============================================================
 // cedar::print 功能验证
-// 本程序演示并验证 cedar::print 的各项功能。
-// 输出彩色文本 → 控制台（供 FAE 直观确认效果）
-// 同时写入纯文本 → 日志文件（由 PRINT_LOG_PATH 环境变量指定）
+//
+// 测试 cedar::print 能否正确处理各种基本类型:
+//   字符串、整数、浮点数、布尔值、字符、空指针
+// 并验证日志文件是否正常生成。
 // ============================================================
 
 #include <cedar/print.hpp>
@@ -10,12 +11,6 @@
 #include <fstream>
 #include <iostream>
 #include <string>
-#include <vector>
-#include <map>
-#include <set>
-#include <list>
-#include <tuple>
-#include <optional>
 
 using namespace std;
 
@@ -49,8 +44,8 @@ int main()
     // ============================================================
     // 场景 1: 基本类型
     // ============================================================
-    cout << "  [场景 1/6]  基本类型" << endl;
-    cout << "  说明: 验证 print 能否正常打印字符串、数字、布尔值、字符\n" << endl;
+    cout << "  [场景 1/3]  基本类型" << endl;
+    cout << "  说明: 验证 print 能否打印字符串、数字、布尔值、字符\n" << endl;
 
     cout << "  >> 纯文本:" << endl;
     cedar::print("Hello World");
@@ -61,77 +56,26 @@ int main()
     cout << "  >> 字符序列:" << endl;
     cedar::print('A', 'B', 'C');
 
-    print_separator();
-
-    // ============================================================
-    // 场景 2: 容器类型
-    // ============================================================
-    cout << "  [场景 2/6]  容器类型" << endl;
-    cout << "  说明: 验证 print 能否正确打印 vector / list / map / set\n" << endl;
-
-    vector<int> v = {1, 2, 3};
-    cout << "  >> vector<int>:" << endl;
-    cedar::print("vector:", v);
-
-    list<string> lst = {"a", "b"};
-    cout << "  >> list<string>:" << endl;
-    cedar::print("list:", lst);
-
-    map<string, int> mp = {{"x", 1}, {"y", 2}};
-    cout << "  >> map<string, int>:" << endl;
-    cedar::print("map:", mp);
-
-    set<int> s = {10, 20, 30};
-    cout << "  >> set<int>:" << endl;
-    cedar::print("set:", s);
-
-    print_separator();
-
-    // ============================================================
-    // 场景 3: pair / tuple
-    // ============================================================
-    cout << "  [场景 3/6]  元组与键值对" << endl;
-    cout << "  说明: 验证 print 能否正确打印 pair 和 tuple\n" << endl;
-
-    cout << "  >> pair<string, int>:" << endl;
-    cedar::print("pair:", make_pair("key", 42));
-
-    cout << "  >> tuple<int, string, double>:" << endl;
-    cedar::print("tuple:", make_tuple(1, "two", 3.0));
-
-    print_separator();
-
-    // ============================================================
-    // 场景 4: optional / nullptr
-    // ============================================================
-    cout << "  [场景 4/6]  空值与可选值" << endl;
-    cout << "  说明: 验证 print 能否正确处理有值/无值的 optional 和 nullptr\n" << endl;
-
-    optional<int> opt_yes = 100;
-    optional<int> opt_no;
-    cout << "  >> optional（有值 + 无值）:" << endl;
-    cedar::print("optional:", opt_yes, opt_no);
-
-    cout << "  >> nullptr:" << endl;
+    cout << "  >> 空指针:" << endl;
     cedar::print("nullptr:", nullptr);
 
     print_separator();
 
     // ============================================================
-    // 场景 5: 自定义分隔符与结尾
+    // 场景 2: 多个参数混合
     // ============================================================
-    cout << "  [场景 5/6]  自定义格式" << endl;
-    cout << "  说明: 使用 print_with 自定义分隔符和结尾\n" << endl;
+    cout << "  [场景 2/3]  多参数混合" << endl;
+    cout << "  说明: 验证不同类型的参数混在一起能否正常输出\n" << endl;
 
-    cout << "  >> 用 \" | \" 分隔，以换行结尾:" << endl;
-    cedar::print_with(" | ", "\n", "A", "B", "C");
+    cout << "  >> 数字 + 字符串 + 布尔 + 浮点数:" << endl;
+    cedar::print(1, "plus", 2.0, "equals", 3.0, true);
 
     print_separator();
 
     // ============================================================
-    // 场景 6: 日志文件验证
+    // 场景 3: 日志文件验证
     // ============================================================
-    cout << "  [场景 6/6]  日志文件验证" << endl;
+    cout << "  [场景 3/3]  日志文件验证" << endl;
     cout << "  说明: 验证 print 是否同时将内容写入了日志文件\n" << endl;
 
     // 日志路径: 优先使用环境变量 PRINT_LOG_PATH，否则默认 /tmp/print.log

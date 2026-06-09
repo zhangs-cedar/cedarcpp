@@ -12,6 +12,7 @@ set(CEDAR_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 set(CEDAR_HEADERS
     ${CEDAR_INCLUDE_DIR}/cedar/image.hpp
     ${CEDAR_INCLUDE_DIR}/cedar/print.hpp
+    ${CEDAR_INCLUDE_DIR}/cedar/print_detail.hpp
 )
 
 # install 路径配置（必须在使用 INSTALL_INTERFACE 之前）
