@@ -121,7 +121,8 @@ else
     # -DCMAKE_PREFIX_PATH: 告诉 CMake 在哪里搜索已安装的包
     cmake -S "$ROOT_DIR/test" -B "$BUILD_DIR/test" \
         -DCMAKE_PREFIX_PATH="$INSTALL_DIR" \
-        -DCMAKE_BUILD_TYPE="$BUILD_TYPE"
+        -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
     # 编译测试可执行文件
     cmake --build "$BUILD_DIR/test" --parallel "$PARALLEL_JOBS"
@@ -141,9 +142,9 @@ fi
 # 主项目是 header-only（无 .cpp），没有编译命令；
 # 用 test/ 的编译命令文件代替，因为 test 包含了 header 的引用路径
 TEST_CCJSON="$BUILD_DIR/test/compile_commands.json"
-if [ -f "$TEST_CCJSON" ] && [ ! -e "$ROOT_DIR/compile_commands.json" ]; then
+if [ -f "$TEST_CCJSON" ]; then
     ln -sf "$TEST_CCJSON" "$ROOT_DIR/compile_commands.json"
-    echo "    compile_commands.json 已链接（供 clangd 使用）"
+    echo "    compile_commands.json 已更新（供 clangd 使用）"
 fi
 
 # ============================================================================
