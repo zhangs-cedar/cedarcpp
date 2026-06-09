@@ -107,3 +107,5 @@ echo "    库文件:  $INSTALL_DIR/include/"
 echo "    配置:    $INSTALL_DIR/lib/cmake/cedar/"
 echo "    日志:    $LOGS_DIR/"
 echo "    再次运行 ./build.sh 走增量构建，速度更快"
+
+/home/coder/data/Github/cedarcpp/build/test/test_sprint
